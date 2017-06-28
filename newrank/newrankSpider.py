@@ -24,6 +24,10 @@ hds = [{'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.
        {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.12 Safari/535.11'},
        {'User-Agent': 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)'}]
 
+rank_name_group=['资讯','生活']
+rank_name=[['时事','民生','财富','科技','创业','汽车','楼市','职场','教育','学术','政务','企业'],
+['文化','百科','健康','时尚','美食','乐活','旅行','幽默','情感','体娱','美体','文摘']
+]
 
 from random import Random
 #生成随机数
@@ -51,7 +55,8 @@ def getsign(url,params):
     items.sort()
     for key,value in items:
         param = key+'='+value+'&'
-        i+=param
+        if key!='nonce' and key!='xyz':
+            i+=param
     i += 'nonce='+ randomStr
     print i
     xyz = md5(i)
@@ -63,46 +68,27 @@ def getsign(url,params):
 def getParams():
     params={}
     params['end']='2017-05-31'
-    params['rank_name']='民生'
-    params['rank_name_group']='资讯'
     params['start']='2017-05-01'
     return params
 
-# 保存数据的Excel
-def print_lists_excel(wechat_lists, wechat_tag_lists):
-    wb = Workbook(optimized_write=True)
-    ws = []
-    for i in range(len(wechat_tag_lists)):
-        # utf8->unicode
-        ws.append(wb.create_sheet(title=wechat_tag_lists[i].decode()))
-    for i in range(len(wechat_tag_lists)):
-        ws[i].append(['序号', '书名', '评分', '评价人数', '作者', '出版社'])
-        count = 1
-        for bl in wechat_lists:
-            ws[i].append([count, bl['name'], bl['b'],
-                          bl['c'], bl['d'], bl['e']])
-            count += 1
-    save_path = 'book_list'
-    for i in range(len(wechat_tag_lists)):
-        save_path += ('-' + wechat_tag_lists[i].decode())
-    save_path += '.xlsx'
-    wb.save(save_path)
-
-
 #获取排行榜列表
-def getRankList():
+def getRankList(params):
    url = 'http://www.newrank.cn/xdnphb/list/month/rank' 
-   datas = getsign('/xdnphb/list/month/rank',getParams())
+   datas = getsign('/xdnphb/list/month/rank',params)
+   time.sleep(np.random.rand() * 5)
    try:
        data = urllib.urlencode(datas)
-    
        request = urllib2.Request(url)
        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor())  
        result = opener.open(request,data).read()
-       return json.loads(result)
+       #print params['rank_name']+'获得排行榜列表为：'+str(result)
+       if result:
+           return json.loads(result)
+       else:
+           return {'value':[]}
    except (urllib2.HTTPError, urllib2.URLError), e:
        print e
-       return {}
+       return {'value':[]}
 
 #启动firefox
 def setup():
@@ -135,25 +121,57 @@ def set_session(browser):
 
 
 #获取公众号详情页面
-def getDetail(account):
-    account='hifm93'
-    url='http://www.newrank.cn/public/info/detail.html?account='+account
+def getPeopleNum(request,account):
 
+    url='http://www.newrank.cn/public/info/detail.html?account='+account
     try:
-        req = urllib2.Request(url, headers=hds[1])
-        source_code = urllib2.urlopen(req).read()
-        plain_text = str(source_code)
-        print plain_text
+        print account +'正在查询中。。'
+        response = request.get(url)
+        soup = BeautifulSoup(response.text)
+        item = soup.find('div',{'class':'detail-fans-counts'})
+        if item:
+            people_num = item['data'].replace(',','',5)
+            print account+'的粉丝数为：'+people_num
+            return people_num
+        else:
+            print account+'已下架'
+            return 0
     except (urllib2.HTTPError, urllib2.URLError), e:
-        print e
-        
+        print account+'抓取出错'
+        return 0
+    
+# 保存数据的Excel
+def print_lists_excel(wechat_lists):
+    wb = Workbook(optimized_write=True)
+    ws = []
+    index = 0
+    for key in wechat_lists:
+        ws.append(wb.create_sheet(title=key.decode('utf-8')))
+        ws[index].append(['序号','名称', '账号', '粉丝数'])
+        count = 1
+        for data in wechat_lists[key]:
+            ws[index].append([count, data['name'], data['account'],
+                          data['peopleNum']])
+            count +=1
+        index+=1
+    save_path = '新榜.xlsx'
+    wb.save(save_path)
+
 
 if __name__ == '__main__':
-    #rankList = getRankList()['value']
-    #print_lists_excel(rankList,['民生'])
+    allResult = {}
+    params = getParams()
     browser = login('18624382369','12345678',setup())
     rq = set_session(browser)
-    response = rq.get('http://www.newrank.cn/public/info/detail.html?account=hifm93')
-    print '广播之声+++++++++++++++++++++++++++++++++++++++++++'+response.text
-    response = rq.get('http://www.newrank.cn/public/info/detail.html?account=rmrbwx')
-    print '人民日报+++++++++++++++++++++++++++++++++++++++++++'+response.text
+    for i,groupName in enumerate(rank_name_group):
+        rankNameList = rank_name[i]
+        params['rank_name_group']=groupName
+        for rankName in rankNameList:
+            params['rank_name']=rankName
+            rankList = getRankList(params)['value']
+            for wechat in rankList:
+                peopleNum = getPeopleNum(rq,wechat['account'])
+                wechat['peopleNum'] = peopleNum
+            allResult[rankName] = rankList
+    print_lists_excel(allResult)
+ 
