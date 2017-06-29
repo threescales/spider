@@ -37,7 +37,7 @@ def author_spider():
             print e
             continue
 
-        soup = BeautifulSoup(plain_text)
+        soup = BeautifulSoup(plain_text,'html.parser')
         list_soup = soup.find('ul',{'class':'list-lined ebook-list column-list'})
         
         try_times += 1
@@ -57,7 +57,12 @@ def author_spider():
                 else:
                     continue
             author_item = book_info.find('a',{'class':'author-item'})
-            book_type = book_info.find('span',{'class':'labeled-text'}).find('span').string.strip()           
+            book_type_item = book_info.find('span',{'class':'labeled-text'})
+            book_type = ""
+            if book_type_item:
+                book_type_span = book_type_item.find('span')
+                if book_type_span:
+                    book_type = book_type_span.string.strip()   
             if author_item:
                 author = author_item.string.strip()
                 author_url = douban_read_root_url+author_item['href']
@@ -86,7 +91,7 @@ def get_people_num(url):
         plain_text = str(source_code)
     except (urllib2.HTTPError, urllib2.URLError), e:
         print e
-    soup = BeautifulSoup(plain_text)
+    soup = BeautifulSoup(plain_text,'html.parser')
     people_num = soup.find('div', {'class': 'followed-number'}).string.strip()
     return people_num
 
@@ -104,6 +109,8 @@ def print_book_lists_excel(book_lists):
         count += 1
     save_path = 'book_list.xlsx'
     wb.save(save_path)
+    print 'Downloading finished'
+
 
 
 if __name__ == '__main__':
