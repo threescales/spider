@@ -57,6 +57,7 @@ def author_spider():
                 else:
                     continue
             author_item = book_info.find('a',{'class':'author-item'})
+            book_type = book_info.find('span',{'class':'labeled-text'}).find('span').string.strip()           
             if author_item:
                 author = author_item.string.strip()
                 author_url = douban_read_root_url+author_item['href']
@@ -72,13 +73,14 @@ def author_spider():
             people_num = get_people_num(author_url)
             # book_score = book_info.find('span',{'class':'rating-average'}).string.strip()
             # book_comment_count = book_info.find('a',{'class':'ratings-link'}).find('span').string.strip()
-            book_list.append([title,author,author_url,people_num])
+            book_list.append([title,book_type,author,author_url,people_num])
         page_num +=1
         print 'Downloading Information From Page %d' % page_num
     return book_list
 
 def get_people_num(url):
     try:
+        time.sleep(1)
         req = urllib2.Request(url, headers=hds[np.random.randint(0, len(hds))])
         source_code = urllib2.urlopen(req).read()
         plain_text = str(source_code)
@@ -94,11 +96,11 @@ def print_book_lists_excel(book_lists):
     wb = Workbook(optimized_write=True)
     ws = []
     ws.append(wb.create_sheet(title='data'))
-    ws[0].append(['序号', '书名', '作者', '作者主页地址','粉丝数'])
+    ws[0].append(['序号', '书名','类别', '作者', '作者主页地址','粉丝数'])
     count = 1
     for bl in book_lists:
         ws[0].append([count, bl[0], bl[1],
-                          bl[2],bl[3]])
+                          bl[2],bl[3],bl[4]])
         count += 1
     save_path = 'book_list.xlsx'
     wb.save(save_path)
