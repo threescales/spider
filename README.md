@@ -8,15 +8,7 @@ spider for 豆瓣读书 and 新榜
 
 2. 安装模块
 
-`sudo pip install numpy`
-
-`sudo pip install bs4`
-
-`sudo pip install openpyxl`
-
-`sudo pip install selenium`
-
-`sudo pip install pyvirtualdisplay`
+`sudo pip install -r requirements.txt`
 
 3.安装驱动
 
