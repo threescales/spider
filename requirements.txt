@@ -1,0 +1,5 @@
+numpy
+bs4
+openpyxl
+selenium
+pyvirtualdisplay
